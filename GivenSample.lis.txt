@@ -1,0 +1,17 @@
+0000  .  SOURCE CODE FOR EXAM #2
+0000  EXAM2    START   0                  
+0000  FIRST    CLEAR   X        050000
+0003           LDA    #0
+0003          +LDB    #TABLE2   69101791
+000B           BASE    TABLE2
+000B  LOOP     ADD     TABLE,X  1BA013
+000E           ADD     TABLE2,X 1BC000
+0011           TIX     COUNT    2F200A
+0014           JLT     LOOP     3B2FF4
+0017          +STA     TOTAL    0F102F01
+001B           RSUB             4F0000
+001E  COUNT    RESW    1
+0021  TABLE    RESW    100
+1791  TABLE2   RESW    100
+2F01  TOTAL    RESW    1
+               END     FIRST

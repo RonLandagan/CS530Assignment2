@@ -4,25 +4,50 @@
 #include <sstream>
 #include <iomanip>
 #include <bits/stdc++.h>
+#include <streambuf>
 #include "InstructionSet.h"
 
 using namespace std;
 
-string writeAddress(string address){
+/*******************************************************************************
+function: formatAddress
+Notes: Takes in a string of an address in HEX and formats it for writing into
+        the LIS file.
+
+@param address The address to format
+@return Formatted address
+*******************************************************************************/
+string formatAddress(string address){
     stringstream ss;
     string result;
+    //Trims down address to 4 least significant bits
     if(address.length() > 4)
         address = address.substr(address.length()-4,4);
+    //Formats so that address is 4 characters wide and filled with 0s.
     ss << setfill('0') << setw(4) << address;
     ss >> result;
     return result;
 }
 
-string formatHexValue(string hexValue){
-    transform(hexValue.begin(), hexValue.end(), hexValue.begin(), ::toupper);
-    return hexValue;
+/*******************************************************************************
+function: toUpper
+Notes: Returns a string with all capital letters.
+
+@param hexValue The string to turn into uppercase
+@return The uppercase form of the string
+*******************************************************************************/
+string toUpper(string str){
+    transform(str.begin(), str.end(), str.begin(), ::toupper);
+    return str;
 }
 
+/*******************************************************************************
+function: hexToDecimal
+Notes: Takes in a hex value and returns its integer equivalent
+
+@param hexValue The string to turn into a decimal
+@return Decimal form of the passed-in number
+*******************************************************************************/
 int hexToDecimal(string hexValue){
     unsigned int x;
     stringstream ss;
@@ -31,15 +56,31 @@ int hexToDecimal(string hexValue){
     return x;
 }
 
+/*******************************************************************************
+function: decimalToHex
+Notes: Takes in an integer and returns its HEX equivalent
+
+@param decimalValue Integer number to turn into hex
+@return Hex form of the passed-in number
+*******************************************************************************/
 string decimalToHex(int decimalValue){
     string result;
     stringstream ss;
     ss << std::hex << decimalValue;
     ss >> result;
-    result = formatHexValue(result);
+    result = toUpper(result);
     return result;
 }
 
+/*******************************************************************************
+function: ReadHeaderRecord
+Notes: Takes in the header record as a string and the filename. Then the 
+    header record is parsed, analyzed, and its LIS equivalent is written
+    in the LIS file.
+
+@param headerRecord Full header record to parse and analyze
+@param filename Filename of LIS file to write into
+*******************************************************************************/
 void ReadHeaderRecord(string headerRecord, string filename){
     cout << "HEADER RECORD" << endl;
     
@@ -55,14 +96,14 @@ void ReadHeaderRecord(string headerRecord, string filename){
     // Write starting address in first line
     ofstream lisFile;
     lisFile.open(filename + ".lis");
-    lisFile << writeAddress(startingAddress);
+    lisFile << formatAddress(startingAddress);
     //1. Write program name in first line
     lisFile << "  .  SOURCE CODE FOR " << controlSectionName << endl;
     
     //Write Starting line of Control Structure code
-    lisFile << writeAddress(startingAddress);
+    lisFile << formatAddress(startingAddress);
     lisFile << setfill(' ') << "  " << setw(6) << controlSectionName;
-    lisFile << "  " << "START" << "  " << " 0" << endl;
+    lisFile << "  " << " START" << "  " << " 0" << endl;
 
     lisFile.close();
     
@@ -84,16 +125,69 @@ void ReadHeaderRecord(string headerRecord, string filename){
 }  
 
 
+
+/*******************************************************************************
+function: findLabel
+Notes: Opens symbol table and looks for a label that matches the passed-in 
+    address. If found, it returns the Symbol. Else, it returns a string of 
+    6 spaces.
+
+@param address The address to find in the symbol table
+@param filename The name of the symbol table to open
+@return Symbol being searched for
+*******************************************************************************/
+string findLabel(int address, string filename){
+    ifstream symTable;
+    symTable.open(filename + ".sym");
+
+    string currentAddress = "00" + formatAddress(decimalToHex(address));
+    
+    //Open the symbol table, turn its contents into a string
+    string str((std::istreambuf_iterator<char>(symTable)),
+                std::istreambuf_iterator<char>());
+    
+    //Search the string for the current address
+    int found = str.find(currentAddress);
+
+    //If found return the Symbol found 8 characters before and return
+        //The substring 6 characters in length
+    if (found != std::string::npos)
+        return str.substr(found-8, 6);
+    else
+        //If not, return "      "
+        return "      ";
+};
+
 void ReadTextRecord(string textRecord, string filename){
     cout << "TEXT RECORD" << endl;
+    textRecord.erase(0,1);
+    
+    // Open output file
+    ofstream lisFile;
+    lisFile.open(filename + ".lis", ios::out | ios::app);
+    
     //1. Read first address in col 2-7
+    int currentAddress = stoi(textRecord.substr(0, 6));
+    textRecord.erase(0,6);
+
     //2. Read length of object code in record in col 8-9
-        //1. Save into a variable
+    int textRecordLength = hexToDecimal(textRecord.substr(0, 2));
+    textRecord.erase(0,2);
+
     //3. Read Object Code in col 10-69
-        //1. Write current address to LIS file in col 1-4
-            //1. If current address matches a label in the SYM table, write label in col 7-12
+    //while(!textRecord.empty()){
+        //Write current address to LIS file in col 1-4
+        lisFile << formatAddress(decimalToHex(currentAddress)) << "  ";
+
+        //If current address matches a label in the SYM table, write label in col 7-12
+        lisFile << findLabel(currentAddress, filename) << "  ";
+
         //2. Read first 3 characters
+        //string first3Chars = textRecord.substr(0,3);
+
         //3. Convert 3 characters to binary
+        //string first3CharsBin = stringToBinary(first3Chars);
+
         //4. Read first 6 bits
             //1. Get Opcode from the OBJ file
             //2. Get format from Opcode
@@ -108,6 +202,7 @@ void ReadTextRecord(string textRecord, string filename){
             //3. Write Object code in col 33-end
         //6. Increment counter variable by instruction size
         //7. Repeat until text record is finished
+   // }
 }
 
 
