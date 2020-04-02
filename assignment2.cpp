@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <bits/stdc++.h>
 #include <streambuf>
+#include <vector>
 #include "InstructionSet.h"
 
 using namespace std;
@@ -27,6 +28,46 @@ string formatAddress(string address){
     ss << setfill('0') << setw(4) << address;
     ss >> result;
     return result;
+}
+
+/*******************************************************************************
+function: formatInstructionName
+Notes: Takes in a string of an instruction mnemonic and formats it for writing 
+        into the LIS file by making the total string length 6 characters.
+
+@param instructionName The name to format
+@return Formatted instruction mnemonic
+*******************************************************************************/
+string formatInstructionName(string instructionName){
+    string formattedInstructionName = "      ";
+
+    for(int i = 0; i < 6; i++){
+        if(i < instructionName.length())
+            formattedInstructionName[i] = instructionName[i];
+        else
+            formattedInstructionName[i] = ' ';
+    }
+    return formattedInstructionName;
+}
+
+/*******************************************************************************
+function: formatOperand
+Notes: Takes in a string of an operand and formats it for writing into the  LIS
+        file by making the total string length 9 characters.
+
+@param operand The operand to format
+@return Formatted operand
+*******************************************************************************/
+string formatOperand(string operand){
+    string formattedOperand = "         ";
+
+    for(int i = 0; i < 9; i++){
+        if(i < operand.length())
+            formattedOperand[i] = operand[i];
+        else
+            formattedOperand[i] = ' ';
+    }
+    return formattedOperand;
 }
 
 /*******************************************************************************
@@ -73,6 +114,187 @@ string decimalToHex(int decimalValue){
 }
 
 /*******************************************************************************
+function: findProperLine
+Notes: Takes in a string of an address in HEX and searches the lis file of the 
+        filename and finds and resturns the correct line to insert the statement
+
+@param address The address of the statement to insert
+@param filename The name of the LIS file to read
+@return The line number to insert at
+*******************************************************************************/
+int findProperLine(string symAddress, string filename){
+    ifstream readLisFile;
+    readLisFile.open(filename + ".lis");
+    string line;
+    int lineCounter = 1;
+    int currentAddress;
+    int currentSymAddress;
+    while(getline(readLisFile, line)){
+        currentAddress = hexToDecimal(line.substr(0,4));
+        currentSymAddress = hexToDecimal(symAddress);
+
+        if(currentAddress > currentSymAddress)
+            break;
+        lineCounter++;
+        
+    }
+    readLisFile.close();
+    return lineCounter;
+}
+
+/*******************************************************************************
+function: insertLineInLisFile
+Notes: Inserts a given string into the passed in location of the passed in LIS 
+        file.
+
+@param properLine The line location to insert newLine
+@param newLine The statement to insert into the LIS file
+@param filename The name of the LIS file to write into
+*******************************************************************************/
+void insertLineInLisFile(int properLine, string newLine, string filename){
+    ifstream readLisFile;
+    readLisFile.open(filename + ".lis");
+    string line;    
+    vector<string> lisFileVector;
+    
+    // Read the lis file and get to the proper line
+    for(int i=1; i<properLine; i++){
+        getline(readLisFile, line);
+        lisFileVector.push_back(line + "\n");
+    }
+    // Insert the new line
+    lisFileVector.push_back(newLine + "\n");
+
+    // Read the rest of the lis file
+    while(getline(readLisFile, line)){
+        lisFileVector.push_back(line + "\n");
+    }
+
+    // Read entire lis file into vector
+    while(getline(readLisFile, line)){
+        lisFileVector.push_back(line + "\n");
+    }
+    readLisFile.close();
+
+    
+    // Write the vector back into the lis file
+    ofstream writeLisFile;
+    writeLisFile.open(filename + ".lis");
+    
+    string test;
+    while(!lisFileVector.empty()){
+        writeLisFile << lisFileVector.front();
+        lisFileVector.erase(lisFileVector.begin());
+    }
+    writeLisFile.close();
+}
+
+/*******************************************************************************
+function: insertLine
+Notes: Inserts the full passed in statement into the passed in LIS file
+
+@param newLine The full statement to pass into the LIS file
+@param filename The name of the LIS file to write into
+*******************************************************************************/
+void insertLine(string newLine, string filename){
+    
+    string newLineAddress = newLine.substr(0,4);
+    int properLine = findProperLine(newLineAddress, filename);
+    
+    insertLineInLisFile(properLine, newLine, filename);
+
+}
+
+/*******************************************************************************
+function: findDeleteLine
+Notes: Finds and returns the number line that matches the passed in address in 
+        the passed in LIS file
+
+@param addressToDelete The address of the line to delete
+@param filename The name of the LIS file to read through
+@return The line number of the matched address
+*******************************************************************************/
+int findDeleteLine(string addressToDelete, string filename){
+    ifstream readLisFile;
+    readLisFile.open(filename + ".lis");
+    string line;
+    int lineCounter = 1;
+    string currentAddress;
+    while(getline(readLisFile, line)){
+        currentAddress = line.substr(0,4);
+
+        if(currentAddress == addressToDelete)
+            break;
+        lineCounter++;
+        
+    }
+    readLisFile.close();
+    return lineCounter;
+}
+
+/*******************************************************************************
+function: deleteLineInLisFile
+Notes: Deletes the line found in the passed in line number in the passed in
+        LIS file.
+
+@param deleteLine The line number of the line to be deleted
+@param filename The LIS file to delete the line
+*******************************************************************************/
+void deleteLineInLisFile(int deleteLine, string filename){
+    ifstream readLisFile;
+    readLisFile.open(filename + ".lis");
+    string line;    
+    vector<string> lisFileVector;
+    
+    // Read the lis file and get to the proper line
+    for(int i=1; i<deleteLine; i++){
+        getline(readLisFile, line);
+        lisFileVector.push_back(line + "\n");
+    }
+    // Ignore the line to be deleted
+    getline(readLisFile, line);
+
+    // Read the rest of the lis file
+    while(getline(readLisFile, line)){
+        lisFileVector.push_back(line + "\n");
+    }
+
+    // Read entire lis file into vector
+    while(getline(readLisFile, line)){
+        lisFileVector.push_back(line + "\n");
+    }
+    readLisFile.close();
+
+    
+    // Write the vector back into the lis file
+    ofstream writeLisFile;
+    writeLisFile.open(filename + ".lis");
+    
+    string test;
+    while(!lisFileVector.empty()){
+        writeLisFile << lisFileVector.front();
+        lisFileVector.erase(lisFileVector.begin());
+    }
+    writeLisFile.close();
+}
+
+/*******************************************************************************
+function: deleteLine
+Notes: Deletes the line found in the passed in address from the passed in LIS
+        file.
+
+@param addressToDelete The address found at the beginn of the line to delete
+@param filename The name of the LIS file to delete from
+*******************************************************************************/
+void deleteLine(string addressToDelete, string filename){
+    //Find the line to delete by address
+    int deletedLine = findDeleteLine(addressToDelete, filename);
+
+    //Delete the line
+   deleteLineInLisFile(deletedLine, filename);
+}
+
+/*******************************************************************************
 function: ReadHeaderRecord
 Notes: Takes in the header record as a string and the filename. Then the 
     header record is parsed, analyzed, and its LIS equivalent is written
@@ -93,19 +315,20 @@ void ReadHeaderRecord(string headerRecord, string filename){
     string startingAddress = headerRecord.substr(7, 6);
     cout << "Starting Address: " << startingAddress << endl;
 
-    // Write starting address in first line
-    ofstream lisFile;
-    lisFile.open(filename + ".lis");
-    lisFile << formatAddress(startingAddress);
-    //1. Write program name in first line
-    lisFile << "  .  SOURCE CODE FOR " << controlSectionName << endl;
-    
-    //Write Starting line of Control Structure code
-    lisFile << formatAddress(startingAddress);
-    lisFile << setfill(' ') << "  " << setw(6) << controlSectionName;
-    lisFile << "  " << " START" << "  " << " 0" << endl;
+    // Write title of source code
+    string firstLine = formatAddress(startingAddress) + "  .  SOURCE CODE FOR ";
+    firstLine += controlSectionName;
 
-    lisFile.close();
+    insertLine(firstLine, filename);
+ 
+    // Write start line
+    string secondLine = formatAddress(startingAddress) + "  ";
+
+    secondLine += formatOperand(controlSectionName);
+
+    secondLine += "START   " + to_string(stoi(startingAddress));
+    
+    insertLine(secondLine, filename);
     
     //Initialize counter variable  
     int currentAddress = stoi(startingAddress); 
@@ -148,55 +371,21 @@ string findLabel(int address, string filename){
     
     //Search the string for the current address
     int found = str.find(currentAddress);
-
+    
     //If found return the Symbol found 8 characters before and return
-        //The substring 6 characters in length
-    if (found != std::string::npos)
-        return str.substr(found-8, 6);
+        //The substring 6 characters in length and delete the current line in LIS file
+    string foundAddress;    
+    if (found != std::string::npos){
+        foundAddress = str.substr(found-8, 6);
+        //If the found label is in the literal table
+        if(foundAddress[0] == ' ')
+            foundAddress = str.substr(found-24, 6);
+    }
     else
         //If not, return a blank space
-        return "      ";
+        foundAddress = "      ";
+    return foundAddress;
 };
-
-/*******************************************************************************
-function: writeCurrentAddress
-Notes: Takes in the current address as an int and the filename. Then the 
-    address is turned into a 4 column string in hex and is written in the 
-    LIS file.
-
-@param currentAddress Current address of the instruction to write
-@param filename Filename of LIS file to write into
-*******************************************************************************/
-void writeCurrentAddress(int currentAddress, string filename){
-    // Open output file
-    ofstream lisFile;
-    lisFile.open(filename + ".lis", ios::out | ios::app);
-
-    lisFile << formatAddress(decimalToHex(currentAddress));
-    lisFile << "  ";
-
-    lisFile.close();
-}
-
-/*******************************************************************************
-function: writeLabel
-Notes: Takes in the current address as an int and the filename. Then a  
-    label with the same address is searched for and if found, it is 
-    written in the LIS file.
-
-@param currentAddress Current address of the instruction to write
-@param filename Filename of LIS file to write into
-*******************************************************************************/
-void writeLabel(int currentAddress, string filename){
-    // Open output file
-    ofstream lisFile;
-    lisFile.open(filename + ".lis", ios::out | ios::app);
-
-    lisFile << findLabel(currentAddress, filename);
-    lisFile << "  ";    
-
-    lisFile.close();
-}
 
 /*******************************************************************************
 function: strToBin
@@ -420,6 +609,13 @@ string getInstructionFlags(string fullObjectCode){
     return instructionFlags;    
 }
 
+/*******************************************************************************
+function: hexToDec
+Notes: Takes in a string of a value in HEX and returns its decimal equivalent.
+
+@param disp The HEX value to convert
+@return The converted decimal value
+*******************************************************************************/
 int hexToDec(string disp){
     int length = disp.length();
 
@@ -445,38 +641,63 @@ string getOperandIndirectBase(string fullObjectCode, string filename){
     return operand;
 }
 
-string getOperandIndirectPC(string fullObjectCode, string filename){
-    string operand = "INDIRECT,PC";
-
-    return operand;
-}
-
-string getOperandIndirectDirect(string fullObjectCode, string filename){
-    string operand = "INDIRECT,DIRECT";
-
-    return operand;
-}
-
 string getOperandImmediateBase(string fullObjectCode, string filename){
     string operand = "IMMEDIATE,BASE";
 
     return operand;
 }
 
-string getOperandImmediatePC(string fullObjectCode, string filename){
-    string operand = "IMMEDIATE,PC";
+/*******************************************************************************
+function: twosCompliment
+Notes: Performs a 2s compliment conversion of passed in HEX value, and returns
+        the result.
 
-    return operand;
+@param hexNum The value to convert in a HEX format
+@return Converted HEX value
+*******************************************************************************/
+string twosCompliment(string hexNum){
+    string binNum = strToBin(hexNum);
+
+    //Flip all the 1's into 0s and vice versa
+    for(int i = 0; i < binNum.length(); i++){
+        if(binNum[i] == '0')
+            binNum[i] = '1';
+        else
+            binNum[i] = '0';
+    }
+
+    // add 1 to result
+    string newHexNum = binToStr(binNum);
+    int decNum = hexToDecimal(newHexNum);
+    decNum++;
+    newHexNum = decimalToHex(decNum);
+    return newHexNum;
 }
 
+/*******************************************************************************
+function: getOperandPC
+Notes: Takes in a string of a full instruction and its address and returns the 
+        appropriate operand through the Program-counter addressing mode.
 
+@param fullObjectCode The full instruction in the form of object code
+@param currentAddress The instruction's address
+@param filename The name of the symbol table to read through
+@return The name of the appropriate operand
+*******************************************************************************/
+string getOperandPC(string fullObjectCode, string currentAddress, string filename){
+    int displacement;
+    string dispInBin = strToBin(fullObjectCode.substr(3,3));
+    //Checks to see if displacement is positive
+    if(dispInBin[0] == '0')
+       displacement = hexToDecimal(fullObjectCode.substr(3,3));
+    else
+       displacement = (-1) * hexToDecimal(twosCompliment(fullObjectCode.substr(3,3)));
 
-string getOperandImmediateDirect(string fullObjectCode, string filename){
-    string operand = "#";
-    string displacement = fullObjectCode.substr(3,3);
-    int dispDecimal = hexToDec(displacement);
+    int programCounter = hexToDecimal(currentAddress) + 3;
 
-    operand += to_string(dispDecimal);
+    int targetAddress = programCounter + displacement;    
+
+    string operand = findLabel(targetAddress, filename);
 
     return operand;
 }
@@ -487,15 +708,39 @@ string getOperandSimpleBase(string fullObjectCode, string filename){
     return operand;
 }
 
-string getOperandSimplePC(string fullObjectCode, string filename){
-    string operand = "SIMPLE,PC";
+/*******************************************************************************
+function: getOperandDirect
+Notes: Takes in a string of a full instruction and its address and returns the 
+        appropriate operand through the direct addressing mode.
+
+@param fullObjectCode The full instruction in the form of object code
+@return The name of the appropriate operand
+*******************************************************************************/
+string getOperandDirect(string fullObjectCode){
+    string operand = "";
+    string displacement = fullObjectCode.substr(3,3);
+    int dispDecimal = hexToDec(displacement);
+
+    operand += to_string(dispDecimal);
 
     return operand;
 }
 
-string getOperandSimpleDirect(string fullObjectCode, string filename){
-    string operand = "SIMPLE,DIRECT";
+/*******************************************************************************
+function: getOperandFormat4
+Notes: Takes in a string of a full, format 4 instruction and returns the 
+        appropriate operand 
 
+@param fullObjectCode The full instruction in the form of object code
+@param filename The name of the symbol table to read through
+@return The name of the appropriate operand
+*******************************************************************************/
+string getOperandFormat4(string fullObjectCode, string filename){
+    string operand = "";
+    int targetAddress;
+
+    targetAddress = hexToDecimal(fullObjectCode.substr(4,4));
+    operand = findLabel(targetAddress, filename);
     return operand;
 }
 
@@ -507,7 +752,7 @@ Notes: Takes in a string of the full object code of an instruction
 @param str A string of a full format 3 instruction
 @return The operand of the instruction
 *******************************************************************************/
-string getOperandFormat3(string fullObjectCode, string filename)
+string getOperandFormat3(string fullObjectCode, string currentAddress, string filename)
 {   //TODO: continue to work on instruction name and operand
     string operand = "";
     // Get the instruction flags 
@@ -515,47 +760,47 @@ string getOperandFormat3(string fullObjectCode, string filename)
 
     // if Indirect flag is set
     if((instructionFlags[0] == '1')&&(instructionFlags[1] == '0')){
+        operand = "@";
         // If base flag is set
         if(instructionFlags[3] == '1')
             //TODO: FINISH this method
-            operand = getOperandIndirectBase(fullObjectCode, filename);
+            operand += getOperandIndirectBase(fullObjectCode, filename);
         // If pc flag is set
-        else if(instructionFlags[4] == '1')
-            //TODO: FINISH this method
-            operand = getOperandIndirectPC(fullObjectCode, filename);
+        else if(instructionFlags[4] == '1'){
+            operand += getOperandPC(fullObjectCode, currentAddress, filename);
+        }
         // If neither base nor pc flags are set 
         else
-            //TODO: FINISH this method
-            operand = getOperandIndirectDirect(fullObjectCode, filename);
+            operand += getOperandDirect(fullObjectCode);
     }
 
     // if Immediate flag is set
     else if((instructionFlags[0] == '0')&&(instructionFlags[1] == '1')){
+        operand = "#";
         // If b flag is set
         if(instructionFlags[3] == '1')
             //TODO: FINISH this method
-            operand = getOperandImmediateBase(fullObjectCode, filename);
+            operand += getOperandImmediateBase(fullObjectCode, filename);
         // If pc flag is set
-        else if(instructionFlags[4] == '1')
-            //TODO: FINISH this method
-            operand = getOperandImmediatePC(fullObjectCode, filename);
+        else if(instructionFlags[4] == '1'){
+            operand += getOperandPC(fullObjectCode, currentAddress, filename);
+        }
         // If neither base nor pc flags are set 
-        else
-            operand = getOperandImmediateDirect(fullObjectCode, filename);
+        else{
+            operand += getOperandDirect(fullObjectCode);
+        }
     }
-    // if neither Indirect nor Immediate flags are net
+    // if both Indirect and Immediate flags are set
     else{
         if(instructionFlags[3] == '1')
             //TODO: FINISH this method
             operand = getOperandSimpleBase(fullObjectCode, filename);
         // If pc flag is set
         else if(instructionFlags[4] == '1')
-            //TODO: FINISH this method NEXT!!!!
-            operand = getOperandSimplePC(fullObjectCode, filename);
+            operand = getOperandPC(fullObjectCode, currentAddress, filename);
         // If neither base nor pc flags are set 
         else
-            //TODO: FINISH this method
-            operand = getOperandSimpleDirect(fullObjectCode, filename);
+            operand = getOperandDirect(fullObjectCode);
     }
 
     // Check x flag
@@ -565,32 +810,7 @@ string getOperandFormat3(string fullObjectCode, string filename)
     return operand;
 }
 
-
-string formatInstructionName(string instructionName){
-    string formattedInstructionName = "      ";
-
-    for(int i = 0; i < 6; i++){
-        if(i < instructionName.length())
-            formattedInstructionName[i] = instructionName[i];
-        else
-            formattedInstructionName[i] = ' ';
-    }
-    return formattedInstructionName;
-}
-
-string formatOperand(string operand){
-    string formattedOperand = "         ";
-
-    for(int i = 0; i < 9; i++){
-        if(i < operand.length())
-            formattedOperand[i] = operand[i];
-        else
-            formattedOperand[i] = ' ';
-    }
-    return formattedOperand;
-}
-
-void writeInstructionAndOperand(string textRecord, string filename){
+string getInstructionAndOperand(string textRecord, string currentAddress, string filename){
     
     int instructionLength = getInstructionLength(textRecord);
 
@@ -599,7 +819,7 @@ void writeInstructionAndOperand(string textRecord, string filename){
     cout << "FULL OBJECT CODE: " << fullObjectCode << endl;
     
     // Get the instruction name
-    string instructionName = getInstructionName(fullObjectCode);
+    string instructionName = formatInstructionName(getInstructionName(fullObjectCode));
     cout << "INSTRUCTION NAME: " << instructionName << endl;
 
     // Get the instruction operand depending on format
@@ -614,29 +834,20 @@ void writeInstructionAndOperand(string textRecord, string filename){
     // Format 2 (2 Bytes)
     else if(instructionLength == 4){
         instructionName.insert(0," ");  
-        operand = getOperandFormat2(fullObjectCode);
+        operand = formatOperand(getOperandFormat2(fullObjectCode));
     }
     // Format 3
     else if(instructionLength == 6){
         instructionName.insert(0," ");  
-        operand = getOperandFormat3(fullObjectCode, filename);
+        operand = getOperandFormat3(fullObjectCode, currentAddress, filename);
     }
     // Format 4
     else if(instructionLength == 8){
         instructionName.insert(0,"+");
-        //operand = getOperandFormat4(fullObjectCode);
+        operand = getOperandFormat4(fullObjectCode, filename);
     }
 
-    // Open output file
-    ofstream lisFile;
-    lisFile.open(filename + ".lis", ios::out | ios::app);
-    // Write instruction into LIS file
-    lisFile << formatInstructionName(instructionName) << "  ";
-    // Write operand into LIS file
-    lisFile << formatOperand(operand) << " ";
-    // Write full object code into LIS file
-    lisFile << fullObjectCode << endl;
-    lisFile.close();
+    return "  " + instructionName + "  " + operand + "   " + fullObjectCode;
 }
 
 void ReadTextRecord(string textRecord, string filename){
@@ -649,7 +860,7 @@ void ReadTextRecord(string textRecord, string filename){
     lisFile.close();
     
     //1. Read first address in col 2-7
-    int currentAddress = stoi(textRecord.substr(0, 6));
+    string currentAddress = formatAddress(textRecord.substr(0, 6));
     textRecord.erase(0,6);
 
     //2. Read length of object code in record in col 8-9
@@ -657,22 +868,27 @@ void ReadTextRecord(string textRecord, string filename){
     textRecord.erase(0,2);
     
     int instructionLength = 0;
+    string fullStatement;
     //3. Read Object Code in col 10-69
-    //while(!textRecord.empty()){
-    for(int i = 0; i < 2; i++){
+    while(!textRecord.empty()){
+    //for(int i = 0; i < 9; i++){
+        fullStatement = "";
         //Writes current address in LIS file in col 1-4
-        writeCurrentAddress(currentAddress, filename);
+        fullStatement += currentAddress + "  ";
         
         //Writes the label if exists in col 7-12
-        writeLabel(currentAddress, filename);
+        fullStatement += findLabel(hexToDecimal(currentAddress), filename);
 
         //Writes the instruction, operand, and object code in col 15-40
-        writeInstructionAndOperand(textRecord,filename);
+        fullStatement += getInstructionAndOperand(textRecord, currentAddress, filename);
+
+        insertLine(fullStatement, filename);
 
         instructionLength = getInstructionLength(textRecord);
         
         //Increments the address
-        currentAddress += instructionLength/2;
+        int newAddress = hexToDecimal(currentAddress) + instructionLength/2;
+        currentAddress = formatAddress(decimalToHex(newAddress));
         textRecord.erase(0,instructionLength);
     }
 }
@@ -689,14 +905,9 @@ void ReadEndRecord(string endRecord, string filename){
     //3. Write program name
 }
 
-// TODO: WORK ON THIS PART NEXT!!
-void insertSymbol(string symName, string symAddress, string filename){
-    // read lis file into vector
-    // find the proper position
-    // insert symbol and address
-    // write vector out into new file
-}
 
+
+// TODO: rewrite to use after text records are read and fill in missing symbols
 void analyzeAndWriteSymbolTable(string filename){
     ifstream symFile;   
     string line;
@@ -714,13 +925,13 @@ void analyzeAndWriteSymbolTable(string filename){
     string symbolName = "";
     string symbolAddress = "";
     string delimiter = " ";
+
     while(line != ""){
-    // parse each line using ' ' as a delimiter 
     symbolName = line.substr(0, 6);
-    symbolAddress = line.substr(8, 6);
-    cout << "SYMBOL NAME: " << symbolName << endl;
-    cout << "SYMBOL ADDRESS: " << symbolAddress << endl;
+    symbolAddress = formatAddress(line.substr(8, 6));
+    
     // write symbol and address in function
+    insertLine(symbolAddress + "  " + symbolName, filename);
     //insertSymbol(symbolName, symbolAddress, filename);
     // end when you read a blank line
     getline(symFile, line);
@@ -744,6 +955,7 @@ void analyzeAndWriteObjectFile(string filename){
         
         if(line[0] == 'T'){
             cout << line << endl;
+    //TODO: WORK ON THIS PART NEXT
             ReadTextRecord(line, filename);
             cout << "\n \n";
         }
@@ -764,19 +976,27 @@ void analyzeAndWriteObjectFile(string filename){
 }
 
 //TODO: might have to do two passes to write the assembler directives
+//TODO: implement handling literals
 void buildLISFile(string filename){
     
-    analyzeAndWriteSymbolTable(filename);
+    //Initialize LIS file
+    ofstream lisFile(filename + ".lis", std::ofstream::trunc);
+    lisFile.close();
+
+   // analyzeAndWriteSymbolTable(filename);
     analyzeAndWriteObjectFile(filename);
+
+    //Add operands to assembler directives
     
 }
 
 int main(int argc, char **argv){
 //1. Build LIS File
     if (argc == 2){
-        buildLISFile(argv[1]);
-    
+      //  buildLISFile(argv[1]);
 
+        string textRecord = "T001070073B2FEF4F000005";
+        ReadTextRecord(textRecord, argv[1]);
     //1. Open OBJ file + Open SYM file
     //2. Read Header Record (Read col 1 “H”)
         //1. Read Program name in col 2-7
