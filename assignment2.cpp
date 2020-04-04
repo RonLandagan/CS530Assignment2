@@ -850,8 +850,67 @@ string getInstructionAndOperand(string textRecord, string currentAddress, string
     return "  " + instructionName + "  " + operand + "   " + fullObjectCode;
 }
 
+//Checks to see if a passed in address is a literal found in the .sym file
+bool isLiteral(string currentAddress, string filename){
+    ifstream symTable;
+    symTable.open(filename + ".sym");
+    
+    //Open the symbol table, turn its contents into a string
+    string str((std::istreambuf_iterator<char>(symTable)),
+                std::istreambuf_iterator<char>());
+    
+    //Search the string for the phrase "Literal"
+    int literalLocation = str.find("Literal");
+    //Search the string for the current address
+    int found = str.rfind("00" + currentAddress);
+    cout << "CURRENT ADDRESS: " << currentAddress << endl;
+    cout << "LITERAL LoCATIN: " << literalLocation << endl;
+    cout << "FOunD: "<<found << endl;
+    bool isLiteral = false;
+    if(found > literalLocation){
+        cout << "THIS IS A LITERAL" << endl;
+        isLiteral = true;
+    }
+
+    return isLiteral;
+}
+
+string getLiteral(string textRecord, string currentAddress, string filename){
+    ifstream symTable;
+    symTable.open(filename + ".sym");
+    string fullStatement = "";
+    
+    //Open the symbol table, turn its contents into a string
+    string str((std::istreambuf_iterator<char>(symTable)),
+                std::istreambuf_iterator<char>());
+
+    int found = str.rfind(currentAddress);
+    fullStatement += "BYTE    ";
+    fullStatement += str.substr(found-17,6) + "   ";
+    int length = stoi(str.substr(found-9,1));
+
+    fullStatement += textRecord.substr(0,length);
+    return fullStatement;
+    
+}
+
+int getLiteralLength(string textRecord, string currentAddress, string filename){
+    ifstream symTable;
+    symTable.open(filename + ".sym");
+    string fullStatement = "";
+    
+    //Open the symbol table, turn its contents into a string
+    string str((std::istreambuf_iterator<char>(symTable)),
+                std::istreambuf_iterator<char>());
+
+    int found = str.rfind(currentAddress);
+
+    int length = stoi(str.substr(found-9, 1));
+    return length;
+}
+
 void ReadTextRecord(string textRecord, string filename){
-    cout << "TEXT RECORD" << endl;
+    cout << "TEXT RECORD : " << textRecord << endl;
     textRecord.erase(0,1);
     
     // Open output file
@@ -870,26 +929,38 @@ void ReadTextRecord(string textRecord, string filename){
     int instructionLength = 0;
     string fullStatement;
     //3. Read Object Code in col 10-69
-    while(!textRecord.empty()){
+    while(textRecord.length() > 1){
     //for(int i = 0; i < 9; i++){
         fullStatement = "";
         //Writes current address in LIS file in col 1-4
+        cout << "GETTING CURRENT ADDRESS" << endl;
         fullStatement += currentAddress + "  ";
         
         //Writes the label if exists in col 7-12
+        cout << "WRITING LABEL" << endl;
         fullStatement += findLabel(hexToDecimal(currentAddress), filename);
-
+        
+        //If the address belongs to a literal, write appropriate statement
+        cout << "CHECKING IF LITERAL" << endl;
+        if(isLiteral(currentAddress, filename)){
+            fullStatement += getLiteral(textRecord, currentAddress, filename);
+            instructionLength = getLiteralLength(textRecord, currentAddress, filename);
+        }
+        else{
         //Writes the instruction, operand, and object code in col 15-40
+        cout << "WRITING INSTRUCTION AND OPERAND" << endl;
         fullStatement += getInstructionAndOperand(textRecord, currentAddress, filename);
+        instructionLength = getInstructionLength(textRecord);
+        }
+        cout << "FULL STATEMENT: " << fullStatement << endl;
 
         insertLine(fullStatement, filename);
-
-        instructionLength = getInstructionLength(textRecord);
         
         //Increments the address
         int newAddress = hexToDecimal(currentAddress) + instructionLength/2;
         currentAddress = formatAddress(decimalToHex(newAddress));
         textRecord.erase(0,instructionLength);
+        cout << "TEXTRECORD LENGTH: " << textRecord.length() << endl;
     }
 }
 
@@ -898,11 +969,29 @@ void ReadModRecord(string modRecord, string filename){
     cout << "MOD RECORD" << endl;
 }
 
+void writeEndStatement(string fullStatement, string filename){
+    // Open output file
+    ofstream lisFile;
+    lisFile.open(filename + ".lis", ios::out | ios::app);
+
+    lisFile << fullStatement;
+    lisFile.close();
+}
+
 void ReadEndRecord(string endRecord, string filename){
     cout << "END RECORD" << endl;
-    //1. Write address
+
+    string fullStatement = "";
+    //1. Write blank address and label 
+    fullStatement += "               ";
     //2. Write “END” instruction
+    fullStatement += "END     ";
     //3. Write program name
+    fullStatement += findLabel(hexToDec(endRecord.substr(1,6)), filename);
+    cout << fullStatement << endl;
+
+    //write end record to end of lis file
+    writeEndStatement(fullStatement, filename);
 }
 
 
@@ -975,28 +1064,114 @@ void analyzeAndWriteObjectFile(string filename){
     objFile.close();
 }
 
-//TODO: might have to do two passes to write the assembler directives
-//TODO: implement handling literals
+map<string,string> createMapOfSymbols(string filename){
+    //Open sym table for reading
+    ifstream symFile;
+    string line;
+    symFile.open(filename + ".sym");
+
+    //Skip a couple lines
+    getline(symFile, line);
+    getline(symFile, line);
+    getline(symFile, line);
+    //Read through each line of sym table and insert each symbol-value pair into a map
+    map<string, string> symbols;
+    while(line != ""){
+        //If symbol doesn't exist in lis file, then insert
+        symbols[line.substr(8,6)] = line.substr(0,6);
+        getline(symFile, line);
+    }
+    symFile.close();
+    return symbols;
+}
+
+map<string,string> removeWrittenSymbols(map<string,string> sym, string filename){
+    //Open lis table for reading
+    ifstream lisFile;
+    string line;
+    lisFile.open(filename + ".lis");
+
+    //remove each address in the lis file from the symbol map
+    while(getline(lisFile, line)){
+        sym.erase("00" + line.substr(0,4));
+    }
+
+    lisFile.close();
+    return sym;
+}
+
+void insertSymbol(string address, string label, string filename){
+    //Create the full statement to be inserted into the LIS file    
+    string fullStatement = "";
+    //Add the address
+    fullStatement += address.substr(2,4) + "  ";
+    //Add the label
+    fullStatement += label + "   ";
+
+    //Find the amount of reserved bytes
+    //Find the address of the next instruction
+    ifstream lisFile;
+    string line = "";
+    lisFile.open(filename + ".lis");
+    
+    getline(lisFile, line);
+    while(line.substr(0,4) < address.substr(2,4)){
+        getline(lisFile, line);
+    }
+    lisFile.close();
+
+    int addressOfNextInstruction = hexToDec(line.substr(0,4));
+ 
+    //Subtract that address from the current address
+    int addressDifference = addressOfNextInstruction - hexToDec(address);
+
+    //If difference%3==0, then give mnemonic "RESW", else "RESB"
+    if(addressDifference % 3 == 0){
+        fullStatement += "RESW    ";
+        addressDifference /= 3;
+    }
+    else
+        fullStatement += "RESB    ";
+    //Add the difference in addresses as an operand
+    fullStatement += to_string(addressDifference);
+
+    insertLine(fullStatement, filename);
+}
+
+void addRemainingSymbols(string filename){
+    
+    map<string,string> symbols = createMapOfSymbols(filename);
+
+    //Read through lis file and remove already written symbols from the map
+    symbols = removeWrittenSymbols(symbols, filename);
+    
+    
+    for(auto i = symbols.rbegin(); i != symbols.rend(); ++i){
+        insertSymbol(i->first, i->second, filename);
+    }
+}
+
+//TODO: Handle Base-relative addressing
+//TODO: Formatting the .lis file columns
+
 void buildLISFile(string filename){
     
     //Initialize LIS file
     ofstream lisFile(filename + ".lis", std::ofstream::trunc);
     lisFile.close();
 
-   // analyzeAndWriteSymbolTable(filename);
+    // analyzeAndWriteSymbolTable(filename);
     analyzeAndWriteObjectFile(filename);
 
     //Add operands to assembler directives
-    
+    addRemainingSymbols(filename);
 }
 
 int main(int argc, char **argv){
 //1. Build LIS File
     if (argc == 2){
-      //  buildLISFile(argv[1]);
+        buildLISFile(argv[1]);
 
-        string textRecord = "T001070073B2FEF4F000005";
-        ReadTextRecord(textRecord, argv[1]);
     //1. Open OBJ file + Open SYM file
     //2. Read Header Record (Read col 1 “H”)
         //1. Read Program name in col 2-7
