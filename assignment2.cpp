@@ -142,6 +142,23 @@ int findProperLine(string symAddress, string filename){
     return lineCounter;
 }
 
+
+void setBaseRegister(string value){
+    ofstream writeBaseRegisterFile;
+    writeBaseRegisterFile.open("baseRegister.txt");
+    writeBaseRegisterFile << value;
+}
+
+
+string getBaseRegister(){
+    ifstream readbaseRegisterFile;
+    readbaseRegisterFile.open("baseRegister.txt");
+    string line;
+    getline(readbaseRegisterFile, line);
+    return line;
+}
+
+
 /*******************************************************************************
 function: insertLineInLisFile
 Notes: Inserts a given string into the passed in location of the passed in LIS 
@@ -582,10 +599,20 @@ string getOperandFormat2(string fullObjectCode){
     char r1 = fullObjectCode[2];
     char r2 = fullObjectCode[3];
 
-    string reg1 = getRegister(r1);
-    string reg2 = getRegister(r2);
+    string reg1;
+    string reg2;
 
-    return reg1 + "," + reg2;
+    string instructionName = getInstructionName(fullObjectCode);
+  
+    if((instructionName == "CLEAR")||(instructionName == "SVC")||(instructionName=="TIXR")){
+        reg1 = getRegister(r1);
+        reg2 = "     ";
+    }
+    else{
+        reg1 = getRegister(r1);
+        reg2 = "," + getRegister(r2);
+    }
+    return reg1 + reg2;
 }
 
 /*******************************************************************************
@@ -633,18 +660,6 @@ int hexToDec(string disp){
         }
     }
     return dispDecimal;
-}
-
-string getOperandIndirectBase(string fullObjectCode, string filename){
-    string operand = "INDIRECT,BASE";
-
-    return operand;
-}
-
-string getOperandImmediateBase(string fullObjectCode, string filename){
-    string operand = "IMMEDIATE,BASE";
-
-    return operand;
 }
 
 /*******************************************************************************
@@ -702,8 +717,22 @@ string getOperandPC(string fullObjectCode, string currentAddress, string filenam
     return operand;
 }
 
-string getOperandSimpleBase(string fullObjectCode, string filename){
-    string operand = "SIMPLE,BASE";
+string getOperandBase(string fullObjectCode, string filename){
+    string operand = "";
+    int displacement;
+    string dispInBin;
+    int targetAddressDec;
+    int baseValue = hexToDecimal(getBaseRegister());
+
+    dispInBin = strToBin(fullObjectCode.substr(3,3));
+    //Checks to see if displacement is positive
+    if(dispInBin[0] == '0')
+       displacement = hexToDecimal(fullObjectCode.substr(3,3));
+    else
+       displacement = (-1) * hexToDecimal(twosCompliment(fullObjectCode.substr(3,3)));
+
+    targetAddressDec = baseValue + displacement;
+    operand = findLabel(targetAddressDec, filename);
 
     return operand;
 }
@@ -739,8 +768,15 @@ string getOperandFormat4(string fullObjectCode, string filename){
     string operand = "";
     int targetAddress;
 
-    targetAddress = hexToDecimal(fullObjectCode.substr(4,4));
-    operand = findLabel(targetAddress, filename);
+    string instructionFlags = getInstructionFlags(fullObjectCode);
+    //If instruction is immediate
+    if((instructionFlags[0] == '0')&&(instructionFlags[1] == '1')){
+        operand = "#" + to_string(hexToDecimal(fullObjectCode.substr(3,5)));
+    }
+    else{
+        targetAddress = hexToDecimal(fullObjectCode.substr(4,4));
+        operand = findLabel(targetAddress, filename);
+    }
     return operand;
 }
 
@@ -753,7 +789,7 @@ Notes: Takes in a string of the full object code of an instruction
 @return The operand of the instruction
 *******************************************************************************/
 string getOperandFormat3(string fullObjectCode, string currentAddress, string filename)
-{   //TODO: continue to work on instruction name and operand
+{
     string operand = "";
     // Get the instruction flags 
     string instructionFlags = getInstructionFlags(fullObjectCode);
@@ -763,8 +799,7 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
         operand = "@";
         // If base flag is set
         if(instructionFlags[3] == '1')
-            //TODO: FINISH this method
-            operand += getOperandIndirectBase(fullObjectCode, filename);
+            operand += getOperandBase(fullObjectCode, filename);
         // If pc flag is set
         else if(instructionFlags[4] == '1'){
             operand += getOperandPC(fullObjectCode, currentAddress, filename);
@@ -779,8 +814,7 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
         operand = "#";
         // If b flag is set
         if(instructionFlags[3] == '1')
-            //TODO: FINISH this method
-            operand += getOperandImmediateBase(fullObjectCode, filename);
+            operand += getOperandBase(fullObjectCode, filename);
         // If pc flag is set
         else if(instructionFlags[4] == '1'){
             operand += getOperandPC(fullObjectCode, currentAddress, filename);
@@ -793,8 +827,7 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
     // if both Indirect and Immediate flags are set
     else{
         if(instructionFlags[3] == '1')
-            //TODO: FINISH this method
-            operand = getOperandSimpleBase(fullObjectCode, filename);
+            operand = getOperandBase(fullObjectCode, filename);
         // If pc flag is set
         else if(instructionFlags[4] == '1')
             operand = getOperandPC(fullObjectCode, currentAddress, filename);
@@ -808,6 +841,54 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
         operand += ",X";
     
     return operand;
+}
+
+string getTargetAddress(string fullObjectCode, string currentAddress){
+    string targetAddress = "";
+
+    int displacement;
+    string dispInBin;
+    int programCounter;
+    int targetAddressDec;
+
+    // Get the instruction flags 
+    string instructionFlags = getInstructionFlags(fullObjectCode);
+
+    // If base relative
+    if(instructionFlags[3] == '1'){
+        int baseValue = hexToDecimal(getBaseRegister());
+
+        dispInBin = strToBin(fullObjectCode.substr(3,3));
+        //Checks to see if displacement is positive
+        if(dispInBin[0] == '0')
+           displacement = hexToDecimal(fullObjectCode.substr(3,3));
+        else
+           displacement = (-1) * hexToDecimal(twosCompliment(fullObjectCode.substr(3,3)));
+
+        targetAddressDec = baseValue + displacement;
+        targetAddress += decimalToHex(targetAddressDec);
+    
+    }
+    //If PC relative
+    else if(instructionFlags[4] == '1'){
+        dispInBin = strToBin(fullObjectCode.substr(3,3));
+        //Checks to see if displacement is positive
+        if(dispInBin[0] == '0')
+           displacement = hexToDecimal(fullObjectCode.substr(3,3));
+        else
+           displacement = (-1) * hexToDecimal(twosCompliment(fullObjectCode.substr(3,3)));
+
+        programCounter = hexToDecimal(currentAddress) + 3;
+
+        targetAddressDec = programCounter + displacement;
+        targetAddress += decimalToHex(targetAddressDec);
+    
+    }
+    //If direct addressing
+    else{
+        targetAddress += fullObjectCode.substr(3,3);
+    }
+    return targetAddress;
 }
 
 string getInstructionAndOperand(string textRecord, string currentAddress, string filename){
@@ -846,8 +927,17 @@ string getInstructionAndOperand(string textRecord, string currentAddress, string
         instructionName.insert(0,"+");
         operand = getOperandFormat4(fullObjectCode, filename);
     }
+    string fullStatement = "";
+    fullStatement = "  " + instructionName + "  " + operand + "   " + fullObjectCode; 
+    
+    cout << instructionName + "|" << endl;
+    if(instructionName == " LDB   "){
+        fullStatement += "\n               BASE    " + operand.substr(1,6);
+        //Sets base register to TargetAddress
+        setBaseRegister(getTargetAddress(fullObjectCode, currentAddress));
+    }
 
-    return "  " + instructionName + "  " + operand + "   " + fullObjectCode;
+    return fullStatement;
 }
 
 //Checks to see if a passed in address is a literal found in the .sym file
@@ -1151,7 +1241,7 @@ void addRemainingSymbols(string filename){
     }
 }
 
-//TODO: Handle Base-relative addressing
+//TODO: When writing .make file remember in clean: rm "baseRegister.txt"
 //TODO: Formatting the .lis file columns
 
 void buildLISFile(string filename){
@@ -1171,51 +1261,6 @@ int main(int argc, char **argv){
 //1. Build LIS File
     if (argc == 2){
         buildLISFile(argv[1]);
-
-    //1. Open OBJ file + Open SYM file
-    //2. Read Header Record (Read col 1 “H”)
-        //1. Read Program name in col 2-7
-            //1. Write program name in first line
-        //2. Read starting address in col 8-13
-            //1. Initialize counter variable
-        //3. Read length of object program in col 14-19
-            //1. Set max length for counter
-        //4. Begin writing LIS file
-    //3. Read Text Record (Read col 1 “T”)
-        //1. Read first address in col 2-7
-        //2. Read length of object code in record in col 8-9
-            //1. Save into a variable
-        //3. Read Object Code in col 10-69
-            //1. Write current address to LIS file in col 1-4
-                //1. If current address matches a label in the SYM table, write label in col 7-12
-            //2. Read first 3 characters
-            //3. Convert 3 characters to binary
-            //4. Read first 6 bits
-                //1. Get Opcode from the OBJ file
-                //2. Get format from Opcode
-                //3. If format is 3 or 4, use the bits 7 to 12 tho find the nixbpe flags
-                //4. Return instructions format
-            //5. Read full instruction
-                //1. Get all nixbpe flags
-                    //1. Find operand using flags
-                //2. Write Instruction and operand
-                    //1. Write instruction in col 15-20
-                    //2. Write operand in col 23-31
-                //3. Write Object code in col 33-end
-            //6. Increment counter variable by instruction size
-            //7. Repeat until text record is finished
-        //4. Go to next line
-    //4. Read Modification Record (Read col 1 “M”)
-    //5. Read End record (Read col 1 “E”)
-        //1. Write address
-        //2. Write “END” instruction
-        //3. Write program name
-//2. Build SIC File
-    //buildSICFile(argv[1]);
-    //1. Open LIS file
-    //2. Begin writing SIC file
-        //1. Read through character-by-character
-        //2.Write only source statements into SIC file 
     }
     else{
         cout << "ERROR: Incorrect numebr of arguments!" << endl;
