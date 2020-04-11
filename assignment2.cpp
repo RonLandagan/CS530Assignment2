@@ -321,16 +321,12 @@ Notes: Takes in the header record as a string and the filename. Then the
 @param filename Filename of LIS file to write into
 *******************************************************************************/
 void ReadHeaderRecord(string headerRecord, string filename){
-    cout << "HEADER RECORD" << endl;
-    
     //Gets Control Section Name
         //1. Read Program name in col 2-7
     string controlSectionName = headerRecord.substr(1,6);
-    cout << "Control section name: " << controlSectionName << endl;
     
     //2. Read starting address in col 8-13
     string startingAddress = headerRecord.substr(7, 6);
-    cout << "Starting Address: " << startingAddress << endl;
 
     // Write title of source code
     string firstLine = formatAddress(startingAddress) + "  .  SOURCE CODE FOR ";
@@ -349,22 +345,15 @@ void ReadHeaderRecord(string headerRecord, string filename){
     
     //Initialize counter variable  
     int currentAddress = stoi(startingAddress); 
-    cout << "Current Address: " << currentAddress << endl;
  
-    //3. Read length of object program in col 14-19
+    // Read length of object program in col 14-19
     string controlSectionLength = headerRecord.substr(13, 6);
-    cout << "Control Section length: " << controlSectionLength << endl;
     
-    //1. Set max length for counter
-    
+    // Set max length for counter
     int fullSectionLength = hexToDecimal(controlSectionLength);
-    cout << "Full section length: " << fullSectionLength << endl;
 
     string hexValue = decimalToHex(fullSectionLength);
-    cout << "HEX VALUE: " << hexValue << endl;
 }  
-
-
 
 /*******************************************************************************
 function: findLabel
@@ -612,7 +601,7 @@ string getOperandFormat2(string fullObjectCode){
         reg1 = getRegister(r1);
         reg2 = "," + getRegister(r2);
     }
-    return reg1 + reg2;
+    return " " + reg1 + reg2;
 }
 
 /*******************************************************************************
@@ -717,6 +706,15 @@ string getOperandPC(string fullObjectCode, string currentAddress, string filenam
     return operand;
 }
 
+/*******************************************************************************
+function: getOperandBase
+Notes: Takes in a string of the full object code and filename and finds the 
+    operand using base relative addressing
+
+@param fullObjectCode The full instruction in the form of object code
+@param filename The name of the base register file to read
+@return The name of the appropriate operand
+*******************************************************************************/
 string getOperandBase(string fullObjectCode, string filename){
     string operand = "";
     int displacement;
@@ -775,7 +773,7 @@ string getOperandFormat4(string fullObjectCode, string filename){
     }
     else{
         targetAddress = hexToDecimal(fullObjectCode.substr(4,4));
-        operand = findLabel(targetAddress, filename);
+        operand = " " + findLabel(targetAddress, filename);
     }
     return operand;
 }
@@ -783,9 +781,11 @@ string getOperandFormat4(string fullObjectCode, string filename){
 /*******************************************************************************
 function: getOperandFormat3
 Notes: Takes in a string of the full object code of an instruction
-    in format 3 and returns its operand.
+        in format 3 and returns its operand.
 
-@param str A string of a full format 3 instruction
+@param fullObjectCode A string of a full format 3 instruction
+@param currentAddress A string of the current address
+@param filename The name of the sym file
 @return The operand of the instruction
 *******************************************************************************/
 string getOperandFormat3(string fullObjectCode, string currentAddress, string filename)
@@ -826,14 +826,15 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
     }
     // if both Indirect and Immediate flags are set
     else{
+        operand = " ";
         if(instructionFlags[3] == '1')
-            operand = getOperandBase(fullObjectCode, filename);
+            operand += getOperandBase(fullObjectCode, filename);
         // If pc flag is set
         else if(instructionFlags[4] == '1')
-            operand = getOperandPC(fullObjectCode, currentAddress, filename);
+            operand += getOperandPC(fullObjectCode, currentAddress, filename);
         // If neither base nor pc flags are set 
         else
-            operand = getOperandDirect(fullObjectCode);
+            operand += getOperandDirect(fullObjectCode);
     }
 
     // Check x flag
@@ -843,6 +844,15 @@ string getOperandFormat3(string fullObjectCode, string currentAddress, string fi
     return operand;
 }
 
+/*******************************************************************************
+function: getTargetAddress
+Notes: Takes in a string of the full object code of an instruction
+         in format 3 and returns target address.
+
+@param fullObjectCode A string of a full instruction
+@param currentAddress A string of the current address
+@return The target address of the instruction
+*******************************************************************************/
 string getTargetAddress(string fullObjectCode, string currentAddress){
     string targetAddress = "";
 
@@ -884,6 +894,10 @@ string getTargetAddress(string fullObjectCode, string currentAddress){
         targetAddress += decimalToHex(targetAddressDec);
     
     }
+    //If format 4
+    else if(instructionFlags[5] == '1'){
+        targetAddress += fullObjectCode.substr(3,5);
+    }
     //If direct addressing
     else{
         targetAddress += fullObjectCode.substr(3,3);
@@ -891,17 +905,24 @@ string getTargetAddress(string fullObjectCode, string currentAddress){
     return targetAddress;
 }
 
+/*******************************************************************************
+function: getInstructionAndOperand
+Notes: Takes in a string of the text record, current address, and file name
+        and returns the full formatted line to go into the LIS file
+
+@param textRecord A string of a full format 3 instruction
+@param currentAddress A string of the current address
+@param filename A string of the file name of the sym file
+@return The full line to insert into the lis file
+*******************************************************************************/
 string getInstructionAndOperand(string textRecord, string currentAddress, string filename){
     
     int instructionLength = getInstructionLength(textRecord);
 
     string fullObjectCode = textRecord.substr(0, instructionLength);
-
-    cout << "FULL OBJECT CODE: " << fullObjectCode << endl;
     
     // Get the instruction name
     string instructionName = formatInstructionName(getInstructionName(fullObjectCode));
-    cout << "INSTRUCTION NAME: " << instructionName << endl;
 
     // Get the instruction operand depending on format
     string operand = "";
@@ -921,17 +942,23 @@ string getInstructionAndOperand(string textRecord, string currentAddress, string
     else if(instructionLength == 6){
         instructionName.insert(0," ");  
         operand = getOperandFormat3(fullObjectCode, currentAddress, filename);
+        operand = formatOperand(operand);
     }
     // Format 4
     else if(instructionLength == 8){
         instructionName.insert(0,"+");
         operand = getOperandFormat4(fullObjectCode, filename);
+        operand = formatOperand(operand);
     }
     string fullStatement = "";
-    fullStatement = "  " + instructionName + "  " + operand + "   " + fullObjectCode; 
+    fullStatement = "  " + instructionName + " " + operand + " " + fullObjectCode; 
     
-    cout << instructionName + "|" << endl;
     if(instructionName == " LDB   "){
+        fullStatement += "\n               BASE    " + operand.substr(1,6);
+        //Sets base register to TargetAddress
+        setBaseRegister(getTargetAddress(fullObjectCode, currentAddress));
+    }
+    else if(instructionName == "+LDB   "){
         fullStatement += "\n               BASE    " + operand.substr(1,6);
         //Sets base register to TargetAddress
         setBaseRegister(getTargetAddress(fullObjectCode, currentAddress));
@@ -940,7 +967,15 @@ string getInstructionAndOperand(string textRecord, string currentAddress, string
     return fullStatement;
 }
 
-//Checks to see if a passed in address is a literal found in the .sym file
+/*******************************************************************************
+function: isLiteral
+Notes: Checks to see if a passed in address is a literal found in the .sym file
+        and returns a boolean value of whether or not it is found
+
+@param currentAddress A string of the current Address
+@param filename A string of the name of the sym file
+@return A boolean value of whether the current address holds a literal
+*******************************************************************************/
 bool isLiteral(string currentAddress, string filename){
     ifstream symTable;
     symTable.open(filename + ".sym");
@@ -953,18 +988,26 @@ bool isLiteral(string currentAddress, string filename){
     int literalLocation = str.find("Literal");
     //Search the string for the current address
     int found = str.rfind("00" + currentAddress);
-    cout << "CURRENT ADDRESS: " << currentAddress << endl;
-    cout << "LITERAL LoCATIN: " << literalLocation << endl;
-    cout << "FOunD: "<<found << endl;
+
     bool isLiteral = false;
     if(found > literalLocation){
-        cout << "THIS IS A LITERAL" << endl;
         isLiteral = true;
     }
 
     return isLiteral;
 }
 
+/*******************************************************************************
+function: getLiteral
+Notes: Takes in a full instruction, the current address, and the filename of 
+        the sym file, and returns the full statement to insert into the lis 
+        file.
+
+@param textRecord A string of the full instruction
+@param currentAddress A string of the current Address
+@param filename A string of the name of the sym file
+@return A string of the full statement to be inserted
+*******************************************************************************/
 string getLiteral(string textRecord, string currentAddress, string filename){
     ifstream symTable;
     symTable.open(filename + ".sym");
@@ -975,7 +1018,7 @@ string getLiteral(string textRecord, string currentAddress, string filename){
                 std::istreambuf_iterator<char>());
 
     int found = str.rfind(currentAddress);
-    fullStatement += "BYTE    ";
+    fullStatement += "   BYTE    ";
     fullStatement += str.substr(found-17,6) + "   ";
     int length = stoi(str.substr(found-9,1));
 
@@ -984,6 +1027,16 @@ string getLiteral(string textRecord, string currentAddress, string filename){
     
 }
 
+/*******************************************************************************
+function: getLiteralLength
+Notes: Takes in a full instruction, the current address, and the filename of 
+        the sym file, and returns the length of the literal
+
+@param textRecord A string of the full instruction
+@param currentAddress A string of the current Address
+@param filename A string of the name of the sym file
+@return The size of the literal
+*******************************************************************************/
 int getLiteralLength(string textRecord, string currentAddress, string filename){
     ifstream symTable;
     symTable.open(filename + ".sym");
@@ -999,8 +1052,15 @@ int getLiteralLength(string textRecord, string currentAddress, string filename){
     return length;
 }
 
+/*******************************************************************************
+function: ReadTextRecord
+Notes: Takes in a full text record and writes each instruction into the lis 
+        file.
+
+@param textRecord A string of the full text record
+@param filename A string of the name of the lis and sym files
+*******************************************************************************/
 void ReadTextRecord(string textRecord, string filename){
-    cout << "TEXT RECORD : " << textRecord << endl;
     textRecord.erase(0,1);
     
     // Open output file
@@ -1023,26 +1083,21 @@ void ReadTextRecord(string textRecord, string filename){
     //for(int i = 0; i < 9; i++){
         fullStatement = "";
         //Writes current address in LIS file in col 1-4
-        cout << "GETTING CURRENT ADDRESS" << endl;
         fullStatement += currentAddress + "  ";
         
         //Writes the label if exists in col 7-12
-        cout << "WRITING LABEL" << endl;
         fullStatement += findLabel(hexToDecimal(currentAddress), filename);
         
         //If the address belongs to a literal, write appropriate statement
-        cout << "CHECKING IF LITERAL" << endl;
         if(isLiteral(currentAddress, filename)){
             fullStatement += getLiteral(textRecord, currentAddress, filename);
             instructionLength = getLiteralLength(textRecord, currentAddress, filename);
         }
         else{
         //Writes the instruction, operand, and object code in col 15-40
-        cout << "WRITING INSTRUCTION AND OPERAND" << endl;
         fullStatement += getInstructionAndOperand(textRecord, currentAddress, filename);
         instructionLength = getInstructionLength(textRecord);
         }
-        cout << "FULL STATEMENT: " << fullStatement << endl;
 
         insertLine(fullStatement, filename);
         
@@ -1050,15 +1105,17 @@ void ReadTextRecord(string textRecord, string filename){
         int newAddress = hexToDecimal(currentAddress) + instructionLength/2;
         currentAddress = formatAddress(decimalToHex(newAddress));
         textRecord.erase(0,instructionLength);
-        cout << "TEXTRECORD LENGTH: " << textRecord.length() << endl;
     }
 }
 
+/*******************************************************************************
+function: writeEndStatement
+Notes: Takes in a full statement and the filename of the lis file, and writes
+        the full end statement into the lis file.
 
-void ReadModRecord(string modRecord, string filename){
-    cout << "MOD RECORD" << endl;
-}
-
+@param textRecord A string of the end statement
+@param filename A string of the name of the lis file
+*******************************************************************************/
 void writeEndStatement(string fullStatement, string filename){
     // Open output file
     ofstream lisFile;
@@ -1068,9 +1125,15 @@ void writeEndStatement(string fullStatement, string filename){
     lisFile.close();
 }
 
-void ReadEndRecord(string endRecord, string filename){
-    cout << "END RECORD" << endl;
+/*******************************************************************************
+function: ReadEndRecord
+Notes: Takes in the full end record and the name of the lis file and writes 
+        last statement in the lis file.
 
+@param textRecord A string of the full end record
+@param filename A string of the name of the lis file
+*******************************************************************************/
+void ReadEndRecord(string endRecord, string filename){
     string fullStatement = "";
     //1. Write blank address and label 
     fullStatement += "               ";
@@ -1078,46 +1141,18 @@ void ReadEndRecord(string endRecord, string filename){
     fullStatement += "END     ";
     //3. Write program name
     fullStatement += findLabel(hexToDec(endRecord.substr(1,6)), filename);
-    cout << fullStatement << endl;
 
     //write end record to end of lis file
     writeEndStatement(fullStatement, filename);
 }
 
+/*******************************************************************************
+function: analyzeAndWriteObjectFile
+Notes: Takes in the name of the obj file and reads each line and take the
+        appropriate action at each record.
 
-
-// TODO: rewrite to use after text records are read and fill in missing symbols
-void analyzeAndWriteSymbolTable(string filename){
-    ifstream symFile;   
-    string line;
-
-    //Read and analyze symbol table
-    // open symbol table
-    symFile.open (filename + ".sym");
-
-    // skip a couple lines
-    getline(symFile, line);
-    getline(symFile, line);
-    getline(symFile, line);
-
-    // loop through file reading each line 
-    string symbolName = "";
-    string symbolAddress = "";
-    string delimiter = " ";
-
-    while(line != ""){
-    symbolName = line.substr(0, 6);
-    symbolAddress = formatAddress(line.substr(8, 6));
-    
-    // write symbol and address in function
-    insertLine(symbolAddress + "  " + symbolName, filename);
-    //insertSymbol(symbolName, symbolAddress, filename);
-    // end when you read a blank line
-    getline(symFile, line);
-
-    }
-}
-
+@param filename A string of the name of the obj file
+*******************************************************************************/
 void analyzeAndWriteObjectFile(string filename){
     ifstream objFile;
     string line;
@@ -1127,33 +1162,28 @@ void analyzeAndWriteObjectFile(string filename){
     while(getline(objFile, line)){
 
         if(line[0] == 'H'){
-            cout << line << endl;
             ReadHeaderRecord(line, filename);
-            cout << "\n \n";
         }
         
         if(line[0] == 'T'){
-            cout << line << endl;
-    //TODO: WORK ON THIS PART NEXT
             ReadTextRecord(line, filename);
-            cout << "\n \n";
-        }
-
-        if(line[0] == 'M'){
-            cout << line << endl;
-            ReadModRecord(line, filename);
-            cout << "\n \n";
         }
 
         if(line[0] == 'E'){
-            cout << line << endl;
             ReadEndRecord(line, filename);
-            cout << "\n \n";
         }
     }
     objFile.close();
 }
 
+/*******************************************************************************
+function: createMapOfSymbols
+Notes: Takes in the name of the sym file and returns an ordered map of each 
+        symbol and its value.
+
+@param filename A string of the name of the sym file
+@return An ordered map of each symbol and their values
+*******************************************************************************/
 map<string,string> createMapOfSymbols(string filename){
     //Open sym table for reading
     ifstream symFile;
@@ -1175,6 +1205,16 @@ map<string,string> createMapOfSymbols(string filename){
     return symbols;
 }
 
+/*******************************************************************************
+function: removeWrittenSymbols
+Notes: Takes in a map of symbols and the name of the sym file and returns an 
+        ordered map of symbols and values that haven't already been written
+        into the lis file.
+
+@param sym An ordered map of all of the symbols in the sym file
+@param filename A string of the name of the lis file
+@return An ordered map of new symbols and their values
+*******************************************************************************/
 map<string,string> removeWrittenSymbols(map<string,string> sym, string filename){
     //Open lis table for reading
     ifstream lisFile;
@@ -1190,6 +1230,15 @@ map<string,string> removeWrittenSymbols(map<string,string> sym, string filename)
     return sym;
 }
 
+/*******************************************************************************
+function: insertSymbol
+Notes: Takes in the address and label of a specific symbol and inserts it 
+        into a lis file
+
+@param address A string of the address of the symbol
+@param label A string of the name of the symbol
+@param filename A string of the name of the lis file
+*******************************************************************************/
 void insertSymbol(string address, string label, string filename){
     //Create the full statement to be inserted into the LIS file    
     string fullStatement = "";
@@ -1228,6 +1277,13 @@ void insertSymbol(string address, string label, string filename){
     insertLine(fullStatement, filename);
 }
 
+/*******************************************************************************
+function: addRemainingSymbols
+Notes: Takes in the name of the lis and sym files and writes in the symbols
+        that are missing in the lis file
+
+@param filename A string of the name of the lis and sym files
+*******************************************************************************/
 void addRemainingSymbols(string filename){
     
     map<string,string> symbols = createMapOfSymbols(filename);
@@ -1242,15 +1298,19 @@ void addRemainingSymbols(string filename){
 }
 
 //TODO: When writing .make file remember in clean: rm "baseRegister.txt"
-//TODO: Formatting the .lis file columns
 
+/*******************************************************************************
+function: buildLISFile
+Notes: Takes in the name of the obj and sym files and writes the lis file.
+
+@param filename A string of the name of the lis file
+*******************************************************************************/
 void buildLISFile(string filename){
     
     //Initialize LIS file
     ofstream lisFile(filename + ".lis", std::ofstream::trunc);
     lisFile.close();
 
-    // analyzeAndWriteSymbolTable(filename);
     analyzeAndWriteObjectFile(filename);
 
     //Add operands to assembler directives
