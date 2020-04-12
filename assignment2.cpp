@@ -190,6 +190,166 @@ bool fileExists(string filename){
         return false;
 }
 
+/*******************************************************************************
+function: isCommand
+Notes: Takes in a word and checks if it is a SIC/XE valid command.
+
+@param commandToCompare: string with a command to be checked
+@return true/false
+*******************************************************************************/
+bool isCommand(string commandToCompare){
+
+	string commands[58] = {"ADD", "ADDF", "ADDR", "AND", "CLEAR", "COMP", "COMPF", "COMPR", "DIV", "DIVF", "DIVR",
+						   "FIX", "FLOAT", "HIO", "J", "JEQ", "JGT", "JLT",
+						   "JSUB", "LDA", "LDB", "LDCH", "LDF", "LDL", "LDS", "LDT", "LDX", "LPS", "MUL", "MULF",
+						   "MULR", "NORM", "OR", "RD", "RMO", "SHIFTL", "SHIFTR", "SIO", "SSK", "STA", "STB", "STCH",
+						   "STF", "STI", "STL", "STS", "STSW", "STT", "STX", "SUB", "SUBF", "SUBR", "SVC", "TD",
+						   "TIO", "TIX", "TIXR", "WD"};
+
+	char firstChar = commandToCompare.at(0);
+
+	if (firstChar == '+'){
+		commandToCompare = commandToCompare.erase(0, 1);
+	}
+
+    for (int i = 0; i < 58 ; i++){
+        if (commandToCompare == commands[i]){
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/*******************************************************************************
+function: count_words
+Notes: Counts the number of words in a string.
+
+@param s: string
+@return int: number of words in a string
+*******************************************************************************/
+int count_words( string s ) {
+    int word_count( 0 );
+    stringstream ss( s );
+    string word;
+    while( ss >> word ) ++word_count;
+    return word_count;
+}
+
+
+string convertToString(string* a, int size)
+{
+    int i;
+    string s = "";
+    for (i = 0; i < size; i++) {
+        s = s + a[i];
+    }
+    return s;
+}
+
+/*******************************************************************************
+function: buildSICFile
+Notes: Builds a SIC file based on a given LIS file
+
+@param input: name of the LIS file
+*******************************************************************************/
+void buildSICFile(string input){
+
+	string lisFileName_input = input;
+	std::ofstream MySICFile("example2.sic");
+	std::ifstream MyLISFile(lisFileName_input);
+	std::string str;
+	std::string tabWord = "\t";
+
+
+	while (std::getline(MyLISFile, str)) {
+
+		string arr[count_words(str)];
+		string *arrP;
+		arrP = arr;
+
+	    int i = 0;
+		stringstream ssin(str);
+		string wordToPrint1, wordToPrint2, wordToPrint3;
+		string wordToTest;
+		bool print2nd = true;
+		int arrSize = *(&arr + 1) - arr;
+
+		while (ssin.good() && i < arrSize){
+			ssin >> arrP[i];
+			++i;
+		}
+
+		wordToPrint1 = arrP[1];
+		wordToPrint2 = arrP[2];
+		wordToPrint3 = arrP[3];
+
+		if(arrP[0] == "BASE" || arrP[0] == "END"){
+			wordToPrint1 = "";
+			wordToPrint2 = arrP[0];
+			wordToPrint3 = arrP[1];
+		}
+
+
+		if(arr[1] == "RSUB"){
+			wordToPrint1 = "";
+			wordToPrint2 = arrP[1];
+			wordToPrint3 = "";
+		}
+
+		if (arr[1] == ""){
+			wordToPrint1 = "";
+			wordToPrint2 = arrP[0];
+			wordToPrint3 = "";
+			print2nd = false;
+
+		}
+
+
+		if (print2nd == true){
+			if(isCommand(arrP[1])){
+				string b = "";
+				cout << b;
+				MySICFile << b;
+				wordToPrint1 = " ";
+				wordToPrint2 = arrP[1];
+				wordToPrint3 = arrP[2];
+			}
+		}
+
+		//Prints the line if it is a comment
+		if(arrP[0] == "."){
+			MySICFile << str.replace(0,1,"") << "";
+			wordToPrint1 = "";
+			wordToPrint2 = "";
+			wordToPrint3 = "";
+		}
+
+		//PRINTS THE LINE if not a comment
+		if(wordToPrint1.length() < 4){
+			tabWord = "\t\t";
+		}else{
+			tabWord = "\t";
+		}
+		MySICFile << wordToPrint1 << tabWord << wordToPrint2;
+
+		if(wordToPrint2.length() < 4){
+			tabWord = "\t\t";
+		}else{
+			tabWord = "\t";
+		}
+		MySICFile << tabWord << wordToPrint3 << "\n";
+
+
+	}
+
+	cout <<  "BUILD SIC FILE funtion - ok";
+	MySICFile.close();
+	MyLISFile.close();
+
+}
+
+
 int main(int argc, char **argv){
 //1. Build LIS File
     if (argc == 2){
@@ -211,4 +371,8 @@ int main(int argc, char **argv){
     }
     remove("baseRegister.txt");
     return 0;
+
+    //BUILD SIC FILE
+    string lisFileName = "example2.lis";
+    buildSICFile(lisFileName);
 }
