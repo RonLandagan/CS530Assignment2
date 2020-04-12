@@ -1,3 +1,16 @@
+/********************************************************************
+Names: Ron Landagan, cssc1917 (Team Lead),
+       Will Rodriguez, cssc1922 (Developer),
+       Isaiah Dorado, cssc1973 (Developer),
+       Joshua Vargas, cssc1929 (Developer)
+Project: CS530 Assignment 2
+File: SymbolFunctions.h
+Notes: This header file contains the declaration of functions that
+        are necessary to analyze and use information found in the
+        symbol table.
+
+********************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <string>

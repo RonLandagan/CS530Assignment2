@@ -1,3 +1,16 @@
+/********************************************************************
+Names: Ron Landagan, cssc1917 (Team Lead),
+       Will Rodriguez, cssc1922 (Developer),
+       Isaiah Dorado, cssc1973 (Developer),
+       Joshua Vargas, cssc1929 (Developer)
+Project: CS530 Assignment 2
+File: LISFunctions.h
+Notes: This header file contains the declaration of functions that
+        are necessary to build the LIS file from the SYM and OBJ
+        files.
+
+********************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <string>
