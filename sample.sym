@@ -1,6 +1,5 @@
 Symbol  Value   Flags:
 -----------------------
-LENGTH  00100C  R
 FIRST   000000  R
 CLOOP   000006  R
 ENDFIL  00001A  R
