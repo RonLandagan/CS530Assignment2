@@ -1,3 +1,16 @@
+/********************************************************************
+Names: Ron Landagan, cssc1917 (Team Lead),
+       Will Rodriguez, cssc1922 (Developer),
+       Isaiah Dorado, cssc1973 (Developer),
+       Joshua Vargas, cssc1929 (Developer)
+Project: CS530 Assignment 2
+File: assignment2.cpp
+Notes: This is the main file which drives the program. This section
+        checks for the needed SYM and OBJ files and generates both 
+        the LIS and SIC files.
+
+********************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -177,7 +190,6 @@ bool fileExists(string filename){
         return false;
 }
 
-//TODO: make to check for obj and sym file existence before building lis file
 int main(int argc, char **argv){
 //1. Build LIS File
     if (argc == 2){
@@ -187,8 +199,10 @@ int main(int argc, char **argv){
         string symFilename = argv[1];
         symFilename += ".sym";
 
-        if(fileExists(objFilename) && fileExists(symFilename))
+        if(fileExists(objFilename) && fileExists(symFilename)){
             buildLISFile(argv[1]);
+            //buildSICFile(argv[1]);
+        }
         else
             cout << "Error: missing .obj or .sym file" << endl;
     }

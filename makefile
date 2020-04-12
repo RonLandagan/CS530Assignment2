@@ -1,4 +1,4 @@
-###########################################################
+################################################################
 # Names: Ron Landagan, cssc1917 (Team Lead), 
 #        Wiliton Rogdrigues, cssc1922 (Developer),
 #        Joshua Vargas, cssc1973 (Developer),
@@ -6,9 +6,9 @@
 # Username: cssc1917
 # Project: CS530 Assignment 2
 # File: makefile
-# Notes: This is the makefile that compiles the dbx.cpp 
+# Notes: This is the makefile that compiles the assignment2.cpp 
 #        file.
-###########################################################
+################################################################
 
 EXEC = dxe
 CC = g++
@@ -21,4 +21,4 @@ $(EXEC):
 clean:
 	rm -f *.o core a.out $(EXEC) 
 
-########################[ EOF: Makefile ]##################
+########################[ EOF: Makefile ]#######################

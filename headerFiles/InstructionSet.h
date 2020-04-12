@@ -1,8 +1,8 @@
 /********************************************************************
-Names: Ron Landagan, cssc1917
-       Will Rodriguez, 
-       Isaiah Dorado, 
-       Joshua Vargas, 
+Names: Ron Landagan, cssc1917 (Team Lead),
+       Will Rodriguez, cssc1922 (Developer),
+       Isaiah Dorado, cssc1973 (Developer),
+       Joshua Vargas, cssc1929 (Developer)
 Project: CS530 Assignment 2
 File: InstructionSet.h
 Notes: This is a header file with a class that contains a hash table 
