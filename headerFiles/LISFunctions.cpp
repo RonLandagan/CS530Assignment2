@@ -193,41 +193,6 @@ void deleteLine(string addressToDelete, string filename){
    deleteLineInLisFile(deletedLine, filename);
 }
 
-void ReadHeaderRecord(string headerRecord, string filename){
-    //Gets Control Section Name
-        //1. Read Program name in col 2-7
-    string controlSectionName = headerRecord.substr(1,6);
-    
-    //2. Read starting address in col 8-13
-    string startingAddress = headerRecord.substr(7, 6);
-
-    // Write title of source code
-    string firstLine = formatAddress(startingAddress) + "  .  SOURCE CODE FOR ";
-    firstLine += controlSectionName;
-
-    insertLine(firstLine, filename);
- 
-    // Write start line
-    string secondLine = formatAddress(startingAddress) + "  ";
-
-    secondLine += formatOperand(controlSectionName);    
-
-    secondLine += "START   " + to_string(stoi(startingAddress)); 
-    
-    insertLine(secondLine, filename);
-    
-    //Initialize counter variable  
-    int currentAddress = stoi(startingAddress);  
- 
-    // Read length of object program in col 14-19
-    string controlSectionLength = headerRecord.substr(13, 6);
-    
-    // Set max length for counter
-    int fullSectionLength = hexToDecimal(controlSectionLength);
-
-    string hexValue = decimalToHex(fullSectionLength);
-}  
-
 int getInstructionLength(string textRecord){
     int numberOfCharacters = 0;
 
