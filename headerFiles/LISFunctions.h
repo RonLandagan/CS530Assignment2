@@ -112,17 +112,6 @@ Notes: Deletes the line found in the passed in address from the passed in LIS
 void deleteLine(string addressToDelete, string filename);
 
 /*******************************************************************************
-function: ReadHeaderRecord
-Notes: Takes in the header record as a string and the filename. Then the 
-    header record is parsed, analyzed, and its LIS equivalent is written
-    in the LIS file.
-
-@param headerRecord Full header record to parse and analyze
-@param filename Filename of LIS file to write into
-*******************************************************************************/
-void ReadHeaderRecord(string headerRecord, string filename);
-
-/*******************************************************************************
 function: getInstructionLength
 Notes: Takes in a string of a textRecord and returns the length of the 
     first instruction.

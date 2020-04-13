@@ -67,3 +67,5 @@ This was the largest project I have ever worked on,
 I should have definitely put more time into perfecting the
     algorithm that this program would run, because halfway
     through, some adjustments had to be made on the fly.
+    This resulted in the program not being as neat as I 
+    would like it.
